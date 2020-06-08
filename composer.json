@@ -1,0 +1,15 @@
+{
+    "name": "dennyweiss/script-resolver",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+      {
+          "name": "Denny Weiß",
+          "email": "denny@fa-weiss.eu"
+      }
+    ],
+    "bin": [
+      "src/script_resolver"
+    ],
+    "require": {}
+}

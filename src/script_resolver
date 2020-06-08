@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+VERBOSITY_SCRIPT_RESOLVER="$(echo "${VERBOSITY_SCRIPT_RESOLVER:-${VERBOSITY}}" | tr '[:upper:]' '[:lower:]')"
+
+if [[ -z "${VERBOSITY_SCRIPT_RESOLVER}" ]]; then
+  VERBOSITY_SCRIPT_RESOLVER='v'
+fi
+readonly VERBOSITY_SCRIPT_RESOLVER
+
+readonly PROJECT_ROOT_DIRECTORY="${PROJECT_ROOT_DIRECTORY:-"$(dirname "$(dirname "${0}")")"}"
+readonly PACKAGES_DIRECTORY="${PACKAGES_DIRECTORY:-"${PROJECT_ROOT_DIRECTORY}/vendor"}"
+readonly PACKAGE_EXPORTS_DIRECTORY="${PACKAGE_EXPORTS_DIRECTORY:-exports}"
+
+script_resolver::log() {
+  local mode
+  mode="$(echo "${1}" | tr '[:lower:]' '[:upper:]')"
+  local message
+  message="${2}"
+  local description
+  description="${3}"
+  local script_name
+  script_name="${4:-$(script_resolver::__sn)}"
+
+  if [[ "${VERBOSITY_SCRIPT_RESOLVER}" == 'quiet' ]]; then
+    return 0
+  fi
+
+  echo -e "${mode}:\t${script_name}\t${message}" >&2
+  if [[ -n "${description}" ]]; then
+    echo -e "\t${description}" >&2
+  fi
+}
+
+script_resolver::__sn() {
+  # shellcheck disable=SC2005
+  echo "$(basename "${BASH_SOURCE[0]}")"
+}
+
+if [[ "${VERBOSITY_SCRIPT_RESOLVER}" == 'vvv' ]]; then
+  script_resolver::log 'info' "PROJECT_ROOT_DIRECTORY:\t'${PROJECT_ROOT_DIRECTORY}'"
+  script_resolver::log 'info' "PACKAGES_DIRECTORY:\t'${PACKAGES_DIRECTORY}'"
+  script_resolver::log 'info' "PACKAGE_EXPORTS_DIRECTORY:\t'${PACKAGE_EXPORTS_DIRECTORY}'"
+fi
+
+script_resolver::main() {
+  local script_definition="${1}"
+  # shellcheck disable=SC2206
+  local elements=(${script_definition//::/ })
+  local package="${elements[0]}"
+  local script="${elements[1]}"
+  local path="${PACKAGES_DIRECTORY}/${package}/${PACKAGE_EXPORTS_DIRECTORY}/${script}"
+
+  if [[ ! -f "${path}" ]] && [[ ! -L "${path}" ]]; then
+    echo
+    if [[ "${VERBOSITY_SCRIPT_RESOLVER}" == *'v'* ]]; then
+      script_resolver::log 'error' "Script not found for '${script_definition}' at path" "${path}" >&2
+    fi
+    exit 1
+  fi
+
+  echo "${path}"
+
+  if [[ "${VERBOSITY_SCRIPT_RESOLVER}" == *'vv'* ]]; then
+    script_resolver::log 'info' "Successful resolved script for '${script_definition}' at path" "${path}" >&2
+  fi
+}
+
+# shellsheck disable=SC1090
+script_resolver::main "${1}"
